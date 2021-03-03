@@ -31,7 +31,7 @@ fi
 
 CORE_NAME=$(basename ${CORE})
 WORK_SUBDIR=${CORE_NAME}-root
-WORK_DIR=$(pwd)/${CORE_SUBDIR}
+WORK_DIR=$(pwd)/${WORK_SUBDIR}
 
 #0x3ffacd00000+0x26000 d00a54489090b1a3e7770c7c0c5e176ac43a2f99@0x3ffacd001d8 . . /lib64/ld-2.22.so
 eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
@@ -49,9 +49,23 @@ eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
     # create soname links
     SN=$(readelf -a ${BINARY_DIR}/${BINARY_NAME} 2>&1 | grep SONAME | sed 's/.*\[\(.*\)\].*/\1/g')
 
+    BASE_NAME=$(readelf -a ${BINARY_DIR}/${BINARY_NAME} 2>&1 | grep SONAME | sed 's/.*\[\(.*\)\].*/\1/g')
+
     for SNX in ${SN}; do
-	echo " soname link ${BINARY_DIR}/${SNX} -> ${BINARY_NAME}"
-	ln -s ${BINARY_NAME} ${BINARY_DIR}/${SNX}
+        if ! [ -f ${BINARY_DIR}/${SNX} ]; then
+           echo " soname link ${BINARY_DIR}/${SNX} -> ${BINARY_NAME}"
+           ln -s ${BINARY_NAME} ${BINARY_DIR}/${SNX}
+        fi
+
+        # gdb sometimes searches library without any suffix after .so
+        if [[ "${SNX}" =~ ".so." ]]; then
+            SNX=${SNX%.so.*}.so
+            if ! [ -f ${BINARY_DIR}/${SNX} ]; then
+                echo " and soname link ${BINARY_DIR}/${SNX} -> ${BINARY_NAME}"
+                ln -s ${BINARY_NAME} ${BINARY_DIR}/${SNX}
+            fi
+
+        fi
     done
 
     # TODO: should we prepare also links in ./usr/lib/debug for debuginfos?
