@@ -84,7 +84,6 @@ eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
 done
 
 # prepare gdb.ini
-# TODO: determine the name of executable binary!
 cat > ${CORE_NAME}.ini <<END
 set solib-absolute-prefix ${WORK_SUBDIR}
 set solib-search-path ${WORK_SUBDIR}/:${WORK_SUBDIR}/lib64:${WORK_SUBDIR}/usr/lib64
