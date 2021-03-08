@@ -1,20 +1,14 @@
 #!/bin/bash
 # jcejka@suse.de
 
-if [ -n "${DEBUGINFOD_CACHE_PATH}" ]; then
-    CACHE_DIR=${DEBUGINFOD_CACHE_PATH}
-elif [ -n "${XDG_CACHE_HOME}" ]; then
-    CACHE_DIR=$XDG_CACHE_HOME/debuginfod_client
-else
-    CACHE_DIR=$HOME/.cache/debuginfod_client
-fi
-
 
 function usage()
 {
+    echo
     echo "$0 <core file>"
     echo "Prepare debug resources for gdb using debuginfod"
-    echo "Create directory with all debuginfos and binaries requested by GDB 10.1 to open core seamlessly."
+    echo "Create directory with executable and all libraries requested by GDB 10.1 to open core seamlessly."
+    echo
 }
 
 if [ $# -ne 1 ] || [ "$1" == "-h" ] || [ "$1" == "--help" ] || [ "$1" == "--usage" ]; then
@@ -34,8 +28,9 @@ WORK_SUBDIR=${CORE_NAME}-root
 WORK_DIR=$(pwd)/${WORK_SUBDIR}
 CORE_BINARY=$(file -b ${CORE} | sed -n "s/.*execfn: '\([^']*\)'.*/\1/p")
 
-if [ -n "${CORE_BINARY}" ]; then
-	echo "Failed to determine executable binary's name. Please edit .ini file and set proper value to \"file\" option." >&2
+if [ -z "${CORE_BINARY}" ]; then
+    echo "Failed to determine executable binary's name." >&2
+    echo "Please edit .ini file and set proper value to \"file\" option." >&2
 fi
 
 # get BUILD_IDs from core, get binaries using debuginfod and create links
@@ -48,31 +43,32 @@ eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
     BINARY_NAME=$(basename ${BINARY})
 
     mkdir -p ${BINARY_DIR}
-    debuginfod-find executable ${BUILDID}
-    # create hardlink to executable (library or binary)
-    echo " hardlink ${BINARY_DIR}/${BINARY_NAME} -> ~/.cache/debuginfod_client/${BUILDID}/executable"
-    ln ~/.cache/debuginfod_client/${BUILDID}/executable ${BINARY_DIR}/${BINARY_NAME}
+    BINARY_CACHE_PATH=$(debuginfod-find executable ${BUILDID})
+    if ! [ -f "${BINARY_CACHE_PATH}" ]; then
+        echo "Failed to get executable for BUILD-ID \"${BUILDID}\"" >&2
+        continue
+    fi
+
+    # create hardlink to binary (library or binary)
+    ln "${BINARY_CACHE_PATH}" ${BINARY_DIR}/${BINARY_NAME}
 
     # create soname links
-    SN=$(readelf -a ${BINARY_DIR}/${BINARY_NAME} 2>&1 | grep SONAME | sed 's/.*\[\(.*\)\].*/\1/g')
-
-    BASE_NAME=$(readelf -a ${BINARY_DIR}/${BINARY_NAME} 2>&1 | grep SONAME | sed 's/.*\[\(.*\)\].*/\1/g')
+    SN=$(readelf -a "${BINARY_CACHE_PATH}" 2>&1 | grep SONAME | sed 's/.*\[\(.*\)\].*/\1/g')
 
     for SNX in ${SN}; do
         if ! [ -f ${BINARY_DIR}/${SNX} ]; then
-           echo " soname link ${BINARY_DIR}/${SNX} -> ${BINARY_NAME}"
+           # echo " soname link ${BINARY_DIR}/${SNX} -> ${BINARY_NAME}"
            ln -s ${BINARY_NAME} ${BINARY_DIR}/${SNX}
         fi
 
-        # gdb sometimes searches library without any suffix after .so
-        if [[ "${SNX}" =~ ".so." ]]; then
-            SNX=${SNX%.so.*}.so
+        # gdb sometimes searches library without version suffixes
+        # after .so so create them as well
+        while [[ "${SNX}" =~ '.so.' ]]; do
+            SNX=${SNX%.*}
             if ! [ -f ${BINARY_DIR}/${SNX} ]; then
-                echo " and soname link ${BINARY_DIR}/${SNX} -> ${BINARY_NAME}"
                 ln -s ${BINARY_NAME} ${BINARY_DIR}/${SNX}
             fi
-
-        fi
+        done
     done
 
     # TODO: should we prepare also links in ./usr/lib/debug for debuginfos?
