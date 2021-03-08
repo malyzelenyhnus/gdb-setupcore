@@ -32,8 +32,15 @@ fi
 CORE_NAME=$(basename ${CORE})
 WORK_SUBDIR=${CORE_NAME}-root
 WORK_DIR=$(pwd)/${WORK_SUBDIR}
+CORE_BINARY=$(file -b ${CORE} | sed -n "s/.*execfn: '\([^']*\)'.*/\1/p")
 
-#0x3ffacd00000+0x26000 d00a54489090b1a3e7770c7c0c5e176ac43a2f99@0x3ffacd001d8 . . /lib64/ld-2.22.so
+if [ -n "${CORE_BINARY}" ]; then
+	echo "Failed to determine executable binary's name. Please edit .ini file and set proper value to \"file\" option." >&2
+fi
+
+# get BUILD_IDs from core, get binaries using debuginfod and create links
+# 0x3ffacd00000+0x26000 d00a54489090b1a3e7770c7c0c5e176ac43a2f99@0x3ffacd001d8 . . /lib64/ld-2.22.so
+
 eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
     BUILDID=${ID%%@*}
 
@@ -84,6 +91,7 @@ set solib-search-path ${WORK_SUBDIR}/:${WORK_SUBDIR}/lib64:${WORK_SUBDIR}/usr/li
 set print max-symbolic-offset 1
 set prompt #
 set height 0
+file ${WORK_DIR}/${CORE_BINARY}
 core ${CORE}
 END
 
