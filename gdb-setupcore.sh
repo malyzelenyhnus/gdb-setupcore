@@ -75,8 +75,14 @@ WORK_DIR=$(pwd)/${WORK_SUBDIR}
 CORE_BINARY=$(file -b ${CORE} | sed -n "s/.*execfn: '\([^']*\)'.*/\1/p")
 
 if [ -z "${CORE_BINARY}" ]; then
+    CORE_BINARY=$(file -b ${CORE} | sed -n "s/.*from '\([^']*\)'.*/\1/p")
+fi
+
+if [ -z "${CORE_BINARY}" ]; then
     echo "Failed to determine executable binary's name." >&2
     echo "Please edit .ini file and set proper value to \"file\" option." >&2
+else
+    echo "Executable binary's name found: \"${CORE_BINARY}\""
 fi
 
 # get BUILD_IDs from core, get binaries using debuginfod and create links
