@@ -7,3 +7,19 @@ Most of current linux distributions ship binaries stripped from debug informatio
 However current GDB integration (gdb-10.1) of debuginfod is not yet perfect and gdb is unable to get binaries and libraries required for core debugging from debuginfod server.
 So before running gdb this script has to prepare sysroot directory where are all these objects downloaded and symlinked under various SONAMES. Then gdb will be able to find them here by paths as it did before debuginfod was used.
 Script also prepares init file with configuration to instruct gdb to search for resouces in that directory instead of system root.
+
+## Requirements:
+```
+  >=elfutils-0.183
+  >=debuginfod-client-0.183 (OpenSUSE Tumbleweed) or >=elfutils-debuginfod-client-0.183 (Fedora)
+  >=gdb-10.1
+```
+
+## Usage:
+```
+  # Prepare environment before first run
+  $ export DEBUGINFOD_URLS=debuginfod-server.example.org
+  $ gdb-setupcore.sh helloworld.core
+  # run gdb
+  $ gdb --command helloworld.core.ini
+```
