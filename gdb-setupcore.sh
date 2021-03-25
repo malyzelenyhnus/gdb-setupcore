@@ -26,12 +26,13 @@ function usage()
 
 SHORT_OPTS="dhsv"
 LONG_OPTS="debug,help,soft,verbose"
-OPT_TEMP="$(getopt -o "$SHORT_OPTS" --long "$LONG_OPTS" -n "gdb-setupcore.sh" -- "$@")"
+OPT_TEMP="$(getopt -o "${SHORT_OPTS}" --long "${LONG_OPTS}" -n "gdb-setupcore.sh" -- "$@")"
 eval set -- "$OPT_TEMP"
 
 typeset -i OPT_DEBUG=0
 typeset OPT_LINK=""
 typeset -i OPT_VERBOSE=0
+typeset -i EXIT=0
 
 while [ "$1" ]; do
     case "$1" in
@@ -56,7 +57,8 @@ while [ "$1" ]; do
             break
             ;;
         *)
-            echo "Unknown parameter '$1' found. Exiting..."
+            echo "Unknown parameter '$1' found. Exiting..." >&2
+            EXIT=1
         ;;
     esac
     shift
@@ -66,8 +68,26 @@ CORE=$1
 
 if ! [ -r "${CORE}" ]; then
     echo "Error: cannot read core file \"${CORE}\"" >&2
-    exit 1
+    EXIT=1
 fi
+
+if [ -z "${DEBUGINFOD_URLS}" ]; then
+    echo "Error: environment variable DEBUGINFOD_URLS not set." >&2
+    EXIT=1
+fi
+
+if [ -z $(which debuginfod-find 2>&/dev/null) ]; then
+    echo "Error: debuginfod-find not found. "
+    EXIT=1
+fi
+
+if [ -z $(which eu-unstrip 2>&/dev/null) ]; then
+    echo "Error: eu-unstrip not found. "
+    EXIT=1
+fi
+
+
+[ ${EXIT} -eq 0 ] || exit ${EXIT}
 
 CORE_NAME=$(basename ${CORE})
 WORK_SUBDIR=${CORE_NAME}-root
@@ -109,7 +129,7 @@ eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
     ln ${OPT_LINK} "${BINARY_CACHE_PATH}" ${BINARY_DIR}/${BINARY_NAME}
 
     # create soname links
-    SN=$(readelf -a "${BINARY_CACHE_PATH}" 2>&1 | grep SONAME | sed 's/.*\[\(.*\)\].*/\1/g')
+    SN=$(eu-readelf -a "${BINARY_CACHE_PATH}" 2>&1 | grep SONAME | sed 's/.*\[\(.*\)\].*/\1/g')
     log " sonames found: $SN"
 
     for SNX in ${SN}; do
