@@ -91,6 +91,8 @@ CORE_NAME=$(basename ${CORE})
 WORK_SUBDIR=${CORE_NAME}-root
 WORK_DIR=$(pwd)/${WORK_SUBDIR}
 
+# I did not found better way how to determine which of the records returned
+# by eu-unstrip is executable and which are libraries so it's read from file's output
 log "Use file utility to get name of executable binary from core"
 CORE_BINARY=$(file -b ${CORE} | sed -n "s/.*execfn: '\([^']*\)'.*/\1/p")
 
@@ -110,7 +112,9 @@ log "Reading symbols from core ${CORE}"
 
 # get BUILD_IDs from core, get binaries using debuginfod and create links
 # 0x3ffacd00000+0x26000 d00a54489090b1a3e7770c7c0c5e176ac43a2f99@0x3ffacd001d8 . . /lib64/ld-2.22.so
-
+# 0x7ffe71bf0000+0x1000 e77a560007595d823e2c5a34697c0b0ae1ffc767@0x7ffe71bf0540 . - linux-vdso.so.1
+# 0x7f0af6dd7000+0xc430 a16a9a5f268f00fca20f0f135a7327682ddb503c@0x7f0af6dd72e8 /lib64/libnss_sss.so.2 . libnss_sss.so.2
+# ....
 eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
     BUILDID=${ID%%@*}
 
@@ -166,6 +170,15 @@ eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
     done
 done
 
+GDB_EXEC_FILE="${WORK_DIR}/${CORE_BINARY}"
+# executable path returned by "file" reflect relative path or symlinks used when started
+# and might differ from path returned by eu-unstrip under which is the executable stored
+if ! [ -f "${GDB_EXEC_FILE}" ]; then
+    log "${GDB_EXEC_FILE} does not exists, let's find where is it"
+    GDB_EXEC_FILE=$(find ${WORK_DIR} -name $(basename "${CORE_BINARY}"))
+fi
+log "executable is ${GDB_EXEC_FILE}"
+
 log "Creating .ini file for gdb"
 
 # prepare gdb ini file
@@ -174,7 +187,7 @@ set solib-absolute-prefix ${WORK_SUBDIR}
 set solib-search-path ${WORK_SUBDIR}/:${WORK_SUBDIR}/lib64:${WORK_SUBDIR}/usr/lib64
 set print max-symbolic-offset 1
 set height 0
-file ${WORK_DIR}/${CORE_BINARY}
+file ${GDB_EXEC_FILE}
 core ${CORE}
 END
 
