@@ -131,7 +131,7 @@ eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG MODULE_NAME; do
     mkdir -p "${BINARY_DIR}"
     BINARY_CACHE_PATH=$(debuginfod-find executable ${BUILDID})
     if [ -z "${BINARY_CACHE_PATH}" ] || [ ! -f "${BINARY_CACHE_PATH}" ]; then
-        echo "Failed to get executable for BUILD-ID \"${BUILDID}\"" >&2
+        echo "Failed to get executable for BUILD-ID \"${BUILDID}\" for \"${BINARY_PATH}\"" >&2
         continue
     fi
 
