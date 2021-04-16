@@ -115,13 +115,18 @@ log "Reading symbols from core ${CORE}"
 # 0x7ffe71bf0000+0x1000 e77a560007595d823e2c5a34697c0b0ae1ffc767@0x7ffe71bf0540 . - linux-vdso.so.1
 # 0x7f0af6dd7000+0xc430 a16a9a5f268f00fca20f0f135a7327682ddb503c@0x7f0af6dd72e8 /lib64/libnss_sss.so.2 . libnss_sss.so.2
 # ....
-eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG BINARY; do
+eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG MODULE_NAME; do
     BUILDID=${ID%%@*}
 
-    BINARY_DIR="${WORK_DIR}/$(dirname ${BINARY})"
-    BINARY_NAME="$(basename ${BINARY})"
+    if [ "${FILE}" = '.' ] || [ "${FILE}" = '-' ]; then
+            BINARY_PATH="${MODULE_NAME}"
+    else
+            BINARY_PATH="${FILE}"
+    fi
+    BINARY_DIR="${WORK_DIR}/$(dirname ${BINARY_PATH})"
+    BINARY_NAME="$(basename ${BINARY_PATH})"
 
-    log " downloading: ${BINARY}, build-id: ${BUILDID}"
+    log " downloading: ${BINARY_PATH}, build-id: ${BUILDID}"
 
     mkdir -p "${BINARY_DIR}"
     BINARY_CACHE_PATH=$(debuginfod-find executable ${BUILDID})
