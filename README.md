@@ -12,7 +12,7 @@ Script also prepares init file with configuration to instruct gdb to search for 
 ```
   >=elfutils-0.183
   >=debuginfod-client-0.183 (OpenSUSE Tumbleweed) or >=elfutils-debuginfod-client-0.183 (Fedora)
-  >=gdb-10.1
+  >=gdb-10.1 with debuginfod support enabled
 ```
 
 ## Usage:
