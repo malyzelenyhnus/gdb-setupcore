@@ -87,7 +87,7 @@ fi
 
 [ ${EXIT} -eq 0 ] || exit ${EXIT}
 
-CORE_NAME=$(basename ${CORE})
+CORE_NAME=$(basename -- ${CORE})
 WORK_SUBDIR=${CORE_NAME}-root
 WORK_DIR=$(pwd)/${WORK_SUBDIR}
 
@@ -130,7 +130,7 @@ eu-unstrip -n --core ${CORE} | while read ADDR ID FILE DBG MODULE_NAME; do
             BINARY_PATH="${FILE}"
     fi
     BINARY_DIR="${WORK_DIR}/$(dirname ${BINARY_PATH})"
-    BINARY_NAME="$(basename ${BINARY_PATH})"
+    BINARY_NAME="$(basename -- ${BINARY_PATH})"
 
     log " downloading: ${BINARY_PATH}, build-id: ${BUILDID}"
 
@@ -190,7 +190,7 @@ GDB_EXEC_FILE="${WORK_DIR}/${CORE_BINARY}"
 # and might differ from path returned by eu-unstrip under which is the executable stored
 if ! [ -f "${GDB_EXEC_FILE}" ]; then
     log "${GDB_EXEC_FILE} does not exists, let's find where is it"
-    GDB_EXEC_FILE=$(find ${WORK_DIR} -name $(basename "${CORE_BINARY}"))
+    GDB_EXEC_FILE=$(find ${WORK_DIR} -name $(basename -- "${CORE_BINARY}"))
 fi
 log "executable is ${GDB_EXEC_FILE}"
 
